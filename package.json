@@ -1,0 +1,30 @@
+{
+  "name": "joins",
+  "version": "0.1.0",
+  "author": "Patrick Dubroy <pdubroy@gmail.com> (http://dubroy.com)",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^5.9.1",
+    "eslint": "^0.17.1",
+    "tap-spec": "^1.0.1",
+    "tape": "^2.13.4",
+    "watchify": "^1.0.1",
+    "watchy": "^0.6.1"
+  },
+  "scripts": {
+    "build": "browserify . $npm_package_browserify_opts",
+    "watch": "watchify -v . $npm_package_browserify_opts",
+    "test": "tape test/*.js | tap-spec",
+    "test-watch": "watchy -w lib,test,. -- npm test",
+    "prepublish": "npm run build && npm run test && npm run lint",
+    "lint": "eslint index.js lib test"
+  },
+  "browserify": {
+    "opts": "-d -s joins -o dist/joins.js"
+  },
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  }
+}
