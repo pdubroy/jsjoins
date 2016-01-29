@@ -24,6 +24,9 @@
     // Enforce the use of strict mode at the file level.
     "global-strict": [2, "always"],
 
+    // Allow calling constructors without `new`.
+    "new-cap": 0,
+
     // Allow things like `while (true)`.
     "no-constant-condition": 0,
 
