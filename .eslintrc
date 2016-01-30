@@ -10,6 +10,10 @@
     "module": true,
     "require": true,
   },
+  "ecmaFeatures": {
+    "classes": true,
+    "generators": true,
+  },
   "rules": {
     // Enforce "one true brace style", allowing start and end braces to be
     // on the same line.
