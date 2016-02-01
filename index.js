@@ -4,15 +4,33 @@
 'use strict';
 
 var assert = require('assert');
-var csp = require('js-csp');
-
-var BUFFER_SIZE = 512;
 
 // Helpers
 // -------
 
 function getMatches(patt) {
   return patt._channels.map(function(c) { return c._take(); });
+}
+
+// Queue
+// -----
+
+class Queue {
+  constructor() {
+    this._contents = [];
+  }
+
+  enqueue(val) {
+    this._contents.push(val);
+  }
+
+  dequeue(val) {
+    return this._contents.shift();
+  }
+
+  get length() {
+    return this._contents.length;
+  }
 }
 
 // Reaction
@@ -96,9 +114,9 @@ class JoinPattern {
 
 class Channel {
   constructor() {
-    this._chan = csp.chan(BUFFER_SIZE);
+    this._messages = new Queue();
     this._reactions = [];
-    this._queue = [];
+    this._waiting = new Queue();
   }
 
   isSynchronous() {
@@ -106,12 +124,12 @@ class Channel {
   }
 
   isEmpty() {
-    return this._chan.buf.count() === 0;
+    return this._messages.length === 0;
   }
 
   // Should be yield()ed from.
   send(val) {
-    csp.offer(this._chan, val);
+    this._messages.enqueue(val);
 
     // Run up to one reaction that is waiting on this channel.
     for (var i = 0; i < this._reactions.length; ++i) {
@@ -125,20 +143,24 @@ class Channel {
 
   reply(val) {
     assert(this.isSynchronous(), "Can't reply on an asynchronous channel");
-    assert(this._queue.length > 0, "Can't reply: no processes waiting");
+    assert(this._waiting.length > 0, "Can't reply: no processes waiting");
 
     // Pump the value into the process at the head of the queue.
-    var proc = this._queue.shift();
+    var proc = this._waiting.dequeue();
     proc.step(val);
   }
 
   _take() {
     assert(!this.isEmpty(), "Can't take from an empty channel");
-    return csp.poll(this._chan);
+    return this._messages.dequeue();
   };
 
   _addReaction(r) {
     this._reactions.push(r);
+  }
+
+  _enqueue(proc) {
+    this._waiting.enqueue(proc);
   }
 }
 
@@ -151,7 +173,7 @@ class AsyncChannel extends Channel {
   }
 
   send(val) {
-    csp.offer(this._chan, val);
+    this._messages.enqueue(val);
     this._reactions.find(r => r.tryAndMaybeReply());
   }
 }
@@ -169,7 +191,7 @@ class Process {
     var result = this._iter.next(value);
     var state = this._state = result.value;
     if (typeof state === 'object' && state.status === 'BLOCKING') {
-      state.channel._queue.push(this);
+      state.channel._enqueue(this);
     }
     this._done = result.done;
   }
