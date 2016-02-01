@@ -11,7 +11,7 @@ var BUFFER_SIZE = 512;
 
 function JoinPattern(chan) {
   this._channels = [chan];
-  this._syncChannel = chan.isSynchronous() ? chan : null;
+  this._synchronousChannel = chan.isSynchronous() ? chan : null;
 }
 
 JoinPattern.prototype.isReady = function() {
@@ -26,6 +26,12 @@ Object.defineProperty(JoinPattern.prototype, 'length', {
   get: function() { return this._channels.length; }
 });
 
+// Return the synchronous channel for this pattern, if there is one.
+// Otherwise, return null.
+JoinPattern.prototype.getSynchronousChannel = function() {
+  return this._synchronousChannel;
+};
+
 function Reaction(pattern, fn) {
   this._pattern = pattern;
   this._body = fn;
@@ -35,10 +41,29 @@ function Reaction(pattern, fn) {
   }
 }
 
-Reaction.prototype.try = function() {
+// If the pattern is ready, execute the reaction, and return an object
+// with a `value` property. Otherwise, return null.
+Reaction.prototype.try = function(chan) {
   if (this._pattern.isReady()) {
     return {value: this.run()};
   }
+  return null;
+};
+
+// Like `try`, but if the reaction is executed, the result will be injected
+// into the first process that is blocked on the pattern's synchronous
+// channel (if there is one). Return true if the reaction was executed,
+// otherwise false.
+Reaction.prototype.tryAndMaybeReply = function() {
+  var result = this.try();
+  if (result) {
+    var replyChan = this._pattern.getSynchronousChannel();
+    if (replyChan) {
+      replyChan.reply(result.value);
+    }
+    return true;
+  }
+  return false;
 };
 
 Reaction.prototype.run = function() {
@@ -59,7 +84,7 @@ function Channel() {
     return new Channel();
   }
   this._chan = csp.chan(BUFFER_SIZE);
-  this._waiting = [];
+  this._reactions = [];
   this._queue = [];
 }
 
@@ -76,27 +101,22 @@ Channel.prototype.send = function(val) {
   csp.offer(this._chan, val);
 
   // Run up to one reaction that is waiting on this channel.
-  // TODO: Should we try to run as many as possible?
-  for (var i = 0; i < this._waiting.length; ++i) {
-    var reaction = this._waiting[i];
-    var result = reaction.try();
+  for (var i = 0; i < this._reactions.length; ++i) {
+    var result = this._reactions[i].try();
     if (result) {
-      // If this is an asynchronous channel, don't return the result
-      // directly -- pump it into the iterator any iterator that is
-      // waiting on the synchronous channel associated with this pattern.
-      if (this.isSynchronous()) {
-        return result.value;
-      }
-      // TODO: Refactor this.
-      var chan = reaction._pattern._channels[0];
-      if (chan.isSynchronous() && chan._queue.length >= 0) {
-        var proc = chan._queue.shift();
-        proc.step(result.value);
-      }
-      return;  // eslint-disable-line consistent-return
+      return result.value;
     }
   }
   return {status: 'BLOCKING', channel: this};
+};
+
+Channel.prototype.reply = function(val) {
+  assert(this.isSynchronous(), "Can't reply on an asynchronous channel");
+  assert(this._queue.length > 0, "Can't reply: no processes waiting");
+
+  // Pump the value into the process at the head of the queue.
+  var proc = this._queue.shift();
+  proc.step(val);
 };
 
 Channel.prototype._take = function() {
@@ -105,7 +125,7 @@ Channel.prototype._take = function() {
 };
 
 Channel.prototype._addReaction = function(r) {
-  this._waiting.push(r);
+  this._reactions.push(r);
 };
 
 function AsyncChannel() {
@@ -118,6 +138,11 @@ inherits(AsyncChannel, Channel);
 
 AsyncChannel.prototype.isSynchronous = function() {
   return false;
+};
+
+AsyncChannel.prototype.send = function(val) {
+  csp.offer(this._chan, val);
+  this._reactions.find(r => r.tryAndMaybeReply());
 };
 
 class Process {
