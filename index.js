@@ -3,7 +3,7 @@
 
 'use strict';
 
-var assert = require('assert');
+let assert = require('assert');
 
 // Helpers
 // -------
@@ -41,7 +41,7 @@ class Reaction {
     this._pattern = pattern;
     this._body = bodyFn;
 
-    for (var i = 0; i < pattern._channels.length; ++i) {
+    for (let i = 0; i < pattern._channels.length; ++i) {
       pattern._channels[i]._addReaction(this);
     }
   }
@@ -60,9 +60,9 @@ class Reaction {
   // channel (if there is one). Return true if the reaction was executed,
   // otherwise false.
   tryAndMaybeReply() {
-    var result = this.try();
+    let result = this.try();
     if (result) {
-      var replyChan = this._pattern.getSynchronousChannel();
+      let replyChan = this._pattern.getSynchronousChannel();
       if (replyChan) {
         replyChan.reply(result.value);
       }
@@ -132,8 +132,8 @@ class Channel {
     this._messages.enqueue(val);
 
     // Run up to one reaction that is waiting on this channel.
-    for (var i = 0; i < this._reactions.length; ++i) {
-      var result = this._reactions[i].try();
+    for (let i = 0; i < this._reactions.length; ++i) {
+      let result = this._reactions[i].try();
       if (result) {
         return result.value;
       }
@@ -146,7 +146,7 @@ class Channel {
     assert(this._waiting.length > 0, "Can't reply: no processes waiting");
 
     // Pump the value into the process at the head of the queue.
-    var proc = this._waiting.dequeue();
+    let proc = this._waiting.dequeue();
     proc.step(val);
   }
 
@@ -188,8 +188,8 @@ class Process {
   }
 
   step(value) {
-    var result = this._iter.next(value);
-    var state = this._state = result.value;
+    let result = this._iter.next(value);
+    let state = this._state = result.value;
     if (typeof state === 'object' && state.status === 'BLOCKING') {
       state.channel._enqueue(this);
       this._done = result.done;
@@ -207,7 +207,7 @@ class Process {
 // -------
 
 function spawn(fn, optArgs, optThisArg) {
-  var p = new Process(fn, optArgs, optThisArg);
+  let p = new Process(fn, optArgs, optThisArg);
   p.step();
   return p;
 }

@@ -12,6 +12,7 @@
   },
   "ecmaFeatures": {
     "arrowFunctions": true,
+    "blockBindings": true,
     "classes": true,
     "generators": true,
   },
@@ -49,6 +50,9 @@
 
     // Allow functions to be used before they are defined.
     "no-use-before-define": [2, "nofunc"],
+
+    // Require let or const instead of var.
+    "no-var": 2,
 
     // Use single quotes, except when escaping would be necessary.
     "quotes": [2, "single", "avoid-escape"],

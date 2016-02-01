@@ -1,26 +1,26 @@
 'use strict';
 
-var joins = require('..');
-var test = require('tape');
+let joins = require('..');
+let test = require('tape');
 
 function doesSendBlock(chan, message) {
-  var result = chan.send(message);
+  let result = chan.send(message);
   return typeof result === 'object' && result.status === 'BLOCKING';
 }
 
 function arrayOf(ctor, n) {
-  var result = [];
+  let result = [];
   while (result.length < n) {
     result.push(ctor());
   }
   return result;
 }
 
-test('simple synchronous send', function (t) {
-  var chan = joins.Channel();
-  var results = [];
+test('simple synchronous send', (t) => {
+  let chan = joins.Channel();
+  let results = [];
 
-  joins.when(chan).do(function(s) {
+  joins.when(chan).do((s) => {
     results.push(s);
     return s;
   });
@@ -36,11 +36,11 @@ test('simple synchronous send', function (t) {
   t.end();
 });
 
-test('simple sync and async combination', function (t) {
-  var chan = joins.Channel();
-  var asyncChan = joins.AsyncChannel();
+test('simple sync and async combination', (t) => {
+  let chan = joins.Channel();
+  let asyncChan = joins.AsyncChannel();
 
-  joins.when(chan).and(asyncChan).do(function(syncVal, asyncVal) {
+  joins.when(chan).and(asyncChan).do((syncVal, asyncVal) => {
     return syncVal + asyncVal;
   });
   asyncChan.send(' async');
@@ -59,18 +59,18 @@ test('simple sync and async combination', function (t) {
   t.end();
 });
 
-test('blocking synchronous send', function (t) {
-  var chan = joins.Channel();
-  var asyncChan = joins.AsyncChannel();
+test('blocking synchronous send', (t) => {
+  let chan = joins.Channel();
+  let asyncChan = joins.AsyncChannel();
 
-  joins.when(chan).and(asyncChan).do(function(syncVal, asyncVal) {
+  joins.when(chan).and(asyncChan).do((syncVal, asyncVal) => {
     return syncVal + asyncVal;
   });
 
   // Spawn a new process which will block on `chan` until a message is
   // received on `asyncChan`.
-  var result;
-  var proc = joins.spawn(function*() {
+  let result;
+  let proc = joins.spawn(function*() {
     result = yield chan.send('Hello');
   });
   t.notOk(proc.isComplete(), 'proc is blocking');
@@ -81,10 +81,10 @@ test('blocking synchronous send', function (t) {
   t.end();
 });
 
-test('purely asynchronous chords', function(t) {
-  var chans = [joins.AsyncChannel(), joins.AsyncChannel()];
-  var result;
-  joins.when(chans[0]).and(chans[1]).do(function(a, b) {
+test('purely asynchronous chords', (t) => {
+  let chans = [joins.AsyncChannel(), joins.AsyncChannel()];
+  let result;
+  joins.when(chans[0]).and(chans[1]).do((a, b) => {
     result = a + b;
   });
   chans[0].send(1);
@@ -95,16 +95,18 @@ test('purely asynchronous chords', function(t) {
   t.end();
 });
 
-test('dining philosophers', function(t) {
-  var COUNT = 5;
-  var hungry = arrayOf(joins.Channel, COUNT);
-  var chopsticks = arrayOf(joins.AsyncChannel, COUNT);
+test('dining philosophers', (t) => {
+  const COUNT = 5;
+  const ALL_TRUE = arrayOf(() => true, COUNT);
 
-  var eaten = arrayOf(() => false, COUNT);
+  let hungry = arrayOf(joins.Channel, COUNT);
+  let chopsticks = arrayOf(joins.AsyncChannel, COUNT);
+
+  let eaten = arrayOf(() => false, COUNT);
 
   hungry.forEach((h, i) => {
-    var left = chopsticks[i];
-    var right = chopsticks[(i + 1) % chopsticks.length];
+    let left = chopsticks[i];
+    let right = chopsticks[(i + 1) % chopsticks.length];
     joins.when(h).and(left).and(right).do(() => {
       eaten[i] = true;
       left.send();
@@ -117,10 +119,10 @@ test('dining philosophers', function(t) {
   }
 
   // Spawn the philosophers and put out the chopsticks.
-  var phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
+  let phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
   chopsticks.forEach(c => c.send());
 
-  var ALL_TRUE = arrayOf(() => true, COUNT);
+
   t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
   t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
 
