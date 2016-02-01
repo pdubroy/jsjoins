@@ -3,6 +3,11 @@
 var joins = require('..');
 var test = require('tape');
 
+function doesSendBlock(chan, message) {
+  var result = chan.send(message);
+  return typeof result === 'object' && result.status === 'BLOCKING';
+}
+
 test('simple synchronous send', function (t) {
   var chan = joins.Channel();
   var results = [];
@@ -41,6 +46,8 @@ test('simple sync and async combination', function (t) {
   t.equal(chan.send('wut'), 'wut?');
   t.equal(chan.send('wut'), 'wut!');
 
+  t.ok(doesSendBlock(chan, 'this will block'), 'blocks without async message');
+
   t.end();
 });
 
@@ -62,6 +69,20 @@ test('blocking synchronous send', function (t) {
   asyncChan.send(' async');
   t.ok(proc.isComplete(), 'proc finishes after async send');
   t.equal(result, 'Hello async');
+
+  t.end();
+});
+
+test('purely asynchronous chords', function(t) {
+  var chans = [joins.AsyncChannel(), joins.AsyncChannel()];
+  var result;
+  joins.when(chans[0]).and(chans[1]).do(function(a, b) {
+    result = a + b;
+  });
+  chans[0].send(1);
+  t.notOk(result);
+  chans[1].send(9);
+  t.equal(result, 10);
 
   t.end();
 });
