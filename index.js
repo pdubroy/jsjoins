@@ -192,8 +192,10 @@ class Process {
     var state = this._state = result.value;
     if (typeof state === 'object' && state.status === 'BLOCKING') {
       state.channel._enqueue(this);
+      this._done = result.done;
+    } else {
+      this._done = true;
     }
-    this._done = result.done;
   }
 
   isComplete() {
@@ -204,14 +206,14 @@ class Process {
 // Exports
 // -------
 
-function when(chan) {
-  return new JoinPattern(chan);
-}
-
 function spawn(fn, optArgs, optThisArg) {
   var p = new Process(fn, optArgs, optThisArg);
   p.step();
   return p;
+}
+
+function when(chan) {
+  return new JoinPattern(chan);
 }
 
 module.exports = {

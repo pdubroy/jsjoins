@@ -8,6 +8,14 @@ function doesSendBlock(chan, message) {
   return typeof result === 'object' && result.status === 'BLOCKING';
 }
 
+function arrayOf(ctor, n) {
+  var result = [];
+  while (result.length < n) {
+    result.push(ctor());
+  }
+  return result;
+}
+
 test('simple synchronous send', function (t) {
   var chan = joins.Channel();
   var results = [];
@@ -83,6 +91,44 @@ test('purely asynchronous chords', function(t) {
   t.notOk(result);
   chans[1].send(9);
   t.equal(result, 10);
+
+  t.end();
+});
+
+test('dining philosophers', function(t) {
+  var COUNT = 5;
+  var hungry = arrayOf(joins.Channel, COUNT);
+  var chopsticks = arrayOf(joins.AsyncChannel, COUNT);
+
+  var eaten = arrayOf(() => false, COUNT);
+
+  hungry.forEach((h, i) => {
+    var left = chopsticks[i];
+    var right = chopsticks[(i + 1) % chopsticks.length];
+    joins.when(h).and(left).and(right).do(() => {
+      eaten[i] = true;
+      left.send();
+      right.send();
+    });
+  });
+
+  function *runPhilosopher(hungryChan) {
+    yield hungryChan.send();
+  }
+
+  // Spawn the philosophers and put out the chopsticks.
+  var phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
+  chopsticks.forEach(c => c.send());
+
+  var ALL_TRUE = arrayOf(() => true, COUNT);
+  t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
+  t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
+
+  // A second round to that it still works when the processes are spawned
+  // after the chopsticks are ready.
+  phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
+  t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
+  t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
 
   t.end();
 });
