@@ -12,6 +12,10 @@ function getMatches(patt) {
   return patt._channels.map(function(c) { return c._take(); });
 }
 
+function isChannel(obj) {
+  return obj instanceof Channel;  // eslint-disable-line no-use-before-define
+}
+
 // Queue
 // -----
 
@@ -80,7 +84,9 @@ class Reaction {
 // -----------
 
 class JoinPattern {
-  constructor(chan) {
+  constructor(chanOrProxy) {
+    let chan = isChannel(chanOrProxy) ? chanOrProxy : chanOrProxy._inst;
+    assert(isChannel(chan), 'Not a channel');
     this._channels = [chan];
     this._synchronousChannel = chan.isSynchronous() ? chan : null;
   }
@@ -216,9 +222,18 @@ function when(chan) {
   return new JoinPattern(chan);
 }
 
+// Create a new synchronous channel, and return a function which seends a
+// message on that channel.
+function newChannel() {
+  let chan = new Channel();
+  let result = chan.send.bind(chan);
+  result._inst = chan;
+  return result;
+}
+
 module.exports = {
   AsyncChannel: () => new AsyncChannel(),
-  Channel: () => new Channel(),
+  Channel: newChannel,
   spawn: spawn,
   when: when
 };

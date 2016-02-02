@@ -4,7 +4,7 @@ let joins = require('..');
 let test = require('tape');
 
 function doesSendBlock(chan, message) {
-  let result = chan.send(message);
+  let result = chan(message);
   return typeof result === 'object' && result.status === 'BLOCKING';
 }
 
@@ -24,11 +24,11 @@ test('simple synchronous send', (t) => {
     results.push(s);
     return s;
   });
-  chan.send('Hello, joins!');
+  chan('Hello, joins!');
   t.deepEqual(results, ['Hello, joins!']);
 
-  t.equal(chan.send('another'), 'another');
-  t.equal(chan.send('and another'), 'and another');
+  t.equal(chan('another'), 'another');
+  t.equal(chan('and another'), 'and another');
 
   t.equal(results.length, 3);
   t.deepEqual(results, ['Hello, joins!', 'another', 'and another']);
@@ -44,15 +44,15 @@ test('simple sync and async combination', (t) => {
     return syncVal + asyncVal;
   });
   asyncChan.send(' async');
-  t.equal(chan.send('Hello'), 'Hello async');
+  t.equal(chan('Hello'), 'Hello async');
 
   asyncChan.send(' again!');
-  t.equal(chan.send('Hello'), 'Hello again!');
+  t.equal(chan('Hello'), 'Hello again!');
 
   asyncChan.send('?');
   asyncChan.send('!');
-  t.equal(chan.send('wut'), 'wut?');
-  t.equal(chan.send('wut'), 'wut!');
+  t.equal(chan('wut'), 'wut?');
+  t.equal(chan('wut'), 'wut!');
 
   t.ok(doesSendBlock(chan, 'this will block'), 'blocks without async message');
 
@@ -71,7 +71,7 @@ test('blocking synchronous send', (t) => {
   // received on `asyncChan`.
   let result;
   let proc = joins.spawn(function*() {
-    result = yield chan.send('Hello');
+    result = yield chan('Hello');
   });
   t.notOk(proc.isComplete(), 'proc is blocking');
   asyncChan.send(' async');
@@ -107,6 +107,7 @@ test('dining philosophers', (t) => {
   hungry.forEach((h, i) => {
     let left = chopsticks[i];
     let right = chopsticks[(i + 1) % chopsticks.length];
+
     joins.when(h).and(left).and(right).do(() => {
       eaten[i] = true;
       left.send();
@@ -115,13 +116,12 @@ test('dining philosophers', (t) => {
   });
 
   function *runPhilosopher(hungryChan) {
-    yield hungryChan.send();
+    yield hungryChan();
   }
 
   // Spawn the philosophers and put out the chopsticks.
   let phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
   chopsticks.forEach(c => c.send());
-
 
   t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
   t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
