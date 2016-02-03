@@ -15,6 +15,9 @@
     "blockBindings": true,
     "classes": true,
     "generators": true,
+    "objectLiteralShorthandMethods": true,
+    "objectLiteralShorthandProperties": true,
+    "templateStrings": true
   },
   "rules": {
     // Enforce "one true brace style", allowing start and end braces to be
