@@ -41,30 +41,17 @@ semantics.extendAttribute('modifiedSource', {
 
 // A helper attribute used by our implementation of `modifiedSource`.
 semantics.addAttribute('ast', {
-  NonemptyListOf(first, _, rest) {
-    return [first.ast].concat(rest.ast);
-  },
-  EmptyListOf() {
-    return [];
-  },
   ChannelDefinition(id, open, params, close) {
-    return {
-      id: id.ast,
-      params: params.ast
-    };
+    return {id: id.ast, params: params.ast};
   },
-  FormalParameterList_many(first, rest) {
-    return [first.ast].concat(rest.ast);
-  },
-  FormalParameterList_zero() {
-    return [];
-  },
-  CommaFormalParameter(_, param) {
-    return param.ast;
-  },
+  FormalParameterList_many: (first, rest) => [first.ast].concat(rest.ast),
+  FormalParameterList_zero: () => [],
+  CommaFormalParameter: (_, param) => param.ast,
   identifier(_) {
     return this.interval.contents;
-  }
+  },
+  NonemptyListOf: (first, _, rest) => [first.ast].concat(rest.ast),
+  EmptyListOf: () => []
 });
 /* eslint-enable camelcase */
 
@@ -77,4 +64,4 @@ function translate(src) {
   return semantics(r).asES5;
 }
 
-module.exports = { translate, grammar, semantics };
+module.exports = {translate, grammar, semantics};
