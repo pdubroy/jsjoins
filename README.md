@@ -20,7 +20,7 @@ patterns (see [src/joinjs.ohm](./src/joinjs.ohm) and [src/joinjs.js](./src/joinj
 Creating channels:
 
 ```js
-var joins = require('joins');
+var joins = require('jsjoins');
 var mySyncChannel = joins.Channel();
 var myAsyncChannel = joins.AsyncChannel();
 ```
