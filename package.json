@@ -28,9 +28,8 @@
     "lint": "eslint *.js test"
   },
   "browserify": {
-    "opts": "-d -s joins -o dist/joins.js"
+    "opts": "-d -s jsjoins -o dist/jsjoins.js"
   },
-  "main": "src/index.js",
   "directories": {
     "test": "test"
   }
