@@ -73,8 +73,12 @@ test('blocking synchronous send', (t) => {
   let proc = joins.spawn(function*() {
     result = yield chan('Hello');
   });
+  joins._runPendingTasks();
+
   t.notOk(proc.isComplete(), 'proc is blocking');
   asyncChan.send(' async');
+
+  joins._runPendingTasks();
   t.ok(proc.isComplete(), 'proc finishes after async send');
   t.equal(result, 'Hello async');
 
@@ -88,8 +92,12 @@ test('purely asynchronous chords', (t) => {
     result = a + b;
   });
   chans[0].send(1);
+  joins._runPendingTasks();
+
   t.notOk(result);
   chans[1].send(9);
+  joins._runPendingTasks();
+
   t.equal(result, 10);
 
   t.end();
@@ -122,6 +130,7 @@ test('dining philosophers', (t) => {
   // Spawn the philosophers and put out the chopsticks.
   let phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
   chopsticks.forEach(c => c.send());
+  joins._runPendingTasks();
 
   t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
   t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
@@ -129,6 +138,7 @@ test('dining philosophers', (t) => {
   // A second round to that it still works when the processes are spawned
   // after the chopsticks are ready.
   phils = hungry.map(h => joins.spawn(runPhilosopher, [h]));
+  joins._runPendingTasks();
   t.deepEqual(eaten, ALL_TRUE, 'everyone has eaten');
   t.deepEqual(phils.map(p => p.isComplete()), ALL_TRUE, 'all procs complete');
 

@@ -1,9 +1,14 @@
 // Copyright (c) 2015 Patrick Dubroy <pdubroy@gmail.com>
 // This software is distributed under the terms of the MIT License.
+/* global setImmediate, clearImmediate */
 
 'use strict';
 
 let assert = require('assert');
+require('setimmediate');  // Polyfill for `setImmediate` and `clearImmediate`.
+
+let nextTaskId = 0;
+let pendingTasks = Object.create(null);
 
 // Helpers
 // -------
@@ -14,6 +19,21 @@ function getMatches(patt) {
 
 function isChannel(obj) {
   return obj instanceof Channel;  // eslint-disable-line no-use-before-define
+}
+
+// Enqueues a function as a macrotask to be executed asynchronously using `setImmediate`.
+// See https://dvcs.w3.org/hg/webperf/raw-file/tip/specs/setImmediate/Overview.html.
+function enqueueTask(fn) {
+  let id = nextTaskId++;
+  let handle = null;
+  pendingTasks[id] = () => {
+    if (id in pendingTasks) {
+      fn.apply(null, arguments);
+      clearImmediate(handle);
+      delete pendingTasks[id];
+    }
+  };
+  handle = setImmediate(pendingTasks[id]);
 }
 
 // Queue
@@ -64,12 +84,14 @@ class Reaction {
   // channel (if there is one). Return true if the reaction was executed,
   // otherwise false.
   tryAndMaybeReply() {
-    let result = this.try();
-    if (result) {
+    if (this._pattern.isReady()) {
       let replyChan = this._pattern.getSynchronousChannel();
-      if (replyChan) {
-        replyChan.reply(result.value);
-      }
+      enqueueTask(() => {
+        let result = this.run();
+        if (replyChan) {
+          replyChan.reply(result);
+        }
+      });
       return true;
     }
     return false;
@@ -214,7 +236,7 @@ class Process {
 
 function spawn(fn, optArgs, optThisArg) {
   let p = new Process(fn, optArgs, optThisArg);
-  p.step();
+  enqueueTask(p.step.bind(p));
   return p;
 }
 
@@ -231,9 +253,18 @@ function newChannel() {
   return result;
 }
 
+// Runs all of the tasks that are currently pending.
+// If any tasks cause new tasks to be enqueued, those tasks will not be run.
+function _runPendingTasks() {
+  for (let id in pendingTasks) {
+    pendingTasks[id]();
+  }
+}
+
 module.exports = {
   AsyncChannel: () => new AsyncChannel(),
   Channel: newChannel,
-  spawn: spawn,
-  when: when
+  spawn,
+  when,
+  _runPendingTasks
 };
