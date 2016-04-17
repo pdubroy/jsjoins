@@ -244,7 +244,7 @@ function when(chan) {
   return new JoinPattern(chan);
 }
 
-// Create a new synchronous channel, and return a function which seends a
+// Create a new synchronous channel, and return a function which sends a
 // message on that channel.
 function newChannel() {
   let chan = new Channel();
