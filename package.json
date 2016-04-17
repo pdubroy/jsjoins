@@ -21,7 +21,7 @@
     "test": "tape test/*.js | tap-spec",
     "test-watch": "watchy -w lib,test,. -- npm test",
     "prepublish": "npm run build && npm run test && npm run lint",
-    "lint": "eslint src test"
+    "lint": "eslint *.js test"
   },
   "browserify": {
     "opts": "-d -s joins -o dist/joins.js"
